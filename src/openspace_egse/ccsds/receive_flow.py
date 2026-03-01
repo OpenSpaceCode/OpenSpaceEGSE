@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from openspace_egse.config import EGSE_SERIAL_MAX_READ_SIZE
+
 from .sdlp import TcTransferFrame, TmTransferFrame
 from .sdlp_uart import ParsedSdlpFrame, SdlpFrameType, SdlpUartStreamParser
 from .space_packet import SpacePacket
@@ -43,7 +45,7 @@ class SdlpSpacePacketReceiver:
         self,
         serial_port: SerialLike,
         *,
-        max_read_size: int = 4096,
+        max_read_size: int = EGSE_SERIAL_MAX_READ_SIZE,
     ) -> list[DecodedSpacePacket]:
         if max_read_size <= 0:
             raise ValueError("max_read_size must be positive")
@@ -62,7 +64,7 @@ class SdlpSpacePacketReceiver:
         self,
         serial_port: SerialLike,
         *,
-        max_read_size: int = 4096,
+        max_read_size: int = EGSE_SERIAL_MAX_READ_SIZE,
     ) -> None:
         while True:
             decoded_packets = self.process_serial_once(
@@ -156,7 +158,7 @@ def receive_and_print_once(
     serial_port: SerialLike,
     receiver: SdlpSpacePacketReceiver | None = None,
     *,
-    max_read_size: int = 4096,
+    max_read_size: int = EGSE_SERIAL_MAX_READ_SIZE,
 ) -> list[DecodedSpacePacket]:
     active_receiver = receiver if receiver is not None else SdlpSpacePacketReceiver()
     decoded = active_receiver.process_serial_once(

@@ -27,6 +27,30 @@ except ImportError:
     Figure = None
     MATPLOTLIB_AVAILABLE = False
 
+from openspace_egse.config import (
+    CCSDS_DEFAULT_SPACECRAFT_ID,
+    CCSDS_DEFAULT_TC_APID,
+    CCSDS_DEFAULT_TM_APID,
+    CCSDS_DEFAULT_VIRTUAL_CHANNEL_ID,
+    EGSE_SERIAL_BAUDRATE_DEFAULT,
+    EGSE_SERIAL_MAX_READ_SIZE,
+    EGSE_SERIAL_PORT_DEFAULT,
+    GUI_AUTO_SIM_INTERVAL_MS,
+    GUI_PLOT_HISTORY_LENGTH,
+    GUI_RX_POLL_INTERVAL_S,
+    GUI_UPDATE_INTERVAL_MS,
+    SIM_CAPACITY_BASE_DECI_PCT,
+    SIM_CAPACITY_DECREMENT_PER_SAMPLE,
+    SIM_CAPACITY_SPAN_SAMPLES,
+    SIM_TELEMETRY_STATUS_CYCLE,
+    SIM_TEMPERATURE_BASE_CENTI_C,
+    SIM_TEMPERATURE_SPAN_SAMPLES,
+    SIM_TEMPERATURE_STEP_CENTI_C,
+    SIM_VOLTAGE_BASE_MV,
+    SIM_VOLTAGE_SPAN_SAMPLES,
+    SIM_VOLTAGE_STEP_MV,
+)
+
 from openspace_egse.ccsds import (
     PacketType,
     SpacePacket,
@@ -48,20 +72,6 @@ except ImportError:
     SerialException = Exception
 
 
-PLOT_HISTORY_LENGTH = 200
-RX_POLL_INTERVAL_S = 0.02
-GUI_UPDATE_INTERVAL_MS = 200
-DEFAULT_BAUDRATE = 115200
-DEFAULT_SERIAL_PORT = "/dev/ttyUSB0"
-DEFAULT_TC_APID = 100
-DEFAULT_TM_APID = 200
-DEFAULT_SCID = 1
-DEFAULT_VCID = 0
-DEFAULT_MAX_READ_SIZE = 4096
-SIM_STATUS_CYCLE = 5
-AUTO_SIM_INTERVAL_MS = 1000
-
-
 class EgseGuiApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
@@ -81,10 +91,10 @@ class EgseGuiApp:
         self._sim_tm_frame_count = 0
         self._auto_sim_running = False
         self._auto_sim_after_id: str | None = None
-        self._x = deque(maxlen=PLOT_HISTORY_LENGTH)
-        self._temperature = deque(maxlen=PLOT_HISTORY_LENGTH)
-        self._voltage = deque(maxlen=PLOT_HISTORY_LENGTH)
-        self._capacity = deque(maxlen=PLOT_HISTORY_LENGTH)
+        self._x = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
+        self._temperature = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
+        self._voltage = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
+        self._capacity = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
 
         self._build_layout()
         self._start_rx_thread()
@@ -108,13 +118,13 @@ class EgseGuiApp:
         conn_group.pack(fill=tk.X, pady=(0, 8))
 
         ttk.Label(conn_group, text="Port").grid(row=0, column=0, sticky=tk.W)
-        self.port_var = tk.StringVar(value=DEFAULT_SERIAL_PORT)
+        self.port_var = tk.StringVar(value=EGSE_SERIAL_PORT_DEFAULT)
         ttk.Entry(conn_group, textvariable=self.port_var, width=18).grid(
             row=0, column=1, sticky=tk.W, padx=(6, 0)
         )
 
         ttk.Label(conn_group, text="Baud").grid(row=1, column=0, sticky=tk.W, pady=(6, 0))
-        self.baud_var = tk.StringVar(value=str(DEFAULT_BAUDRATE))
+        self.baud_var = tk.StringVar(value=str(EGSE_SERIAL_BAUDRATE_DEFAULT))
         ttk.Entry(conn_group, textvariable=self.baud_var, width=18).grid(
             row=1, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0)
         )
@@ -138,25 +148,25 @@ class EgseGuiApp:
         tc_group.pack(fill=tk.X, pady=(0, 8))
 
         ttk.Label(tc_group, text="SCID").grid(row=0, column=0, sticky=tk.W)
-        self.scid_var = tk.StringVar(value=str(DEFAULT_SCID))
+        self.scid_var = tk.StringVar(value=str(CCSDS_DEFAULT_SPACECRAFT_ID))
         ttk.Entry(tc_group, textvariable=self.scid_var, width=10).grid(
             row=0, column=1, sticky=tk.W, padx=(6, 0)
         )
 
         ttk.Label(tc_group, text="VCID").grid(row=1, column=0, sticky=tk.W, pady=(6, 0))
-        self.vcid_var = tk.StringVar(value=str(DEFAULT_VCID))
+        self.vcid_var = tk.StringVar(value=str(CCSDS_DEFAULT_VIRTUAL_CHANNEL_ID))
         ttk.Entry(tc_group, textvariable=self.vcid_var, width=10).grid(
             row=1, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0)
         )
 
         ttk.Label(tc_group, text="TC APID").grid(row=2, column=0, sticky=tk.W, pady=(6, 0))
-        self.tc_apid_var = tk.StringVar(value=str(DEFAULT_TC_APID))
+        self.tc_apid_var = tk.StringVar(value=str(CCSDS_DEFAULT_TC_APID))
         ttk.Entry(tc_group, textvariable=self.tc_apid_var, width=10).grid(
             row=2, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0)
         )
 
         ttk.Label(tc_group, text="TM APID").grid(row=3, column=0, sticky=tk.W, pady=(6, 0))
-        self.tm_apid_var = tk.StringVar(value=str(DEFAULT_TM_APID))
+        self.tm_apid_var = tk.StringVar(value=str(CCSDS_DEFAULT_TM_APID))
         ttk.Entry(tc_group, textvariable=self.tm_apid_var, width=10).grid(
             row=3, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0)
         )
@@ -384,11 +394,17 @@ class EgseGuiApp:
 
     def _build_simulated_telemetry_payload(self) -> bytes:
         index = self._sim_tm_packet_sequence
-        status_code = index % SIM_STATUS_CYCLE
+        status_code = index % SIM_TELEMETRY_STATUS_CYCLE
 
-        temperature_centi_c = 2000 + ((index % 40) * 25)
-        voltage_millivolt = 4800 + ((index % 25) * 8)
-        battery_deci_pct = 900 - (index % 120)
+        temperature_centi_c = SIM_TEMPERATURE_BASE_CENTI_C + (
+            (index % SIM_TEMPERATURE_SPAN_SAMPLES) * SIM_TEMPERATURE_STEP_CENTI_C
+        )
+        voltage_millivolt = SIM_VOLTAGE_BASE_MV + (
+            (index % SIM_VOLTAGE_SPAN_SAMPLES) * SIM_VOLTAGE_STEP_MV
+        )
+        battery_deci_pct = SIM_CAPACITY_BASE_DECI_PCT - (
+            (index % SIM_CAPACITY_SPAN_SAMPLES) * SIM_CAPACITY_DECREMENT_PER_SAMPLE
+        )
 
         return (
             bytes((status_code,))
@@ -414,7 +430,7 @@ class EgseGuiApp:
 
         self._inject_simulated_telemetry()
         self._auto_sim_after_id = self.root.after(
-            AUTO_SIM_INTERVAL_MS,
+            GUI_AUTO_SIM_INTERVAL_MS,
             self._run_auto_simulation_step,
         )
 
@@ -433,21 +449,21 @@ class EgseGuiApp:
         while not self._rx_stop_event.is_set():
             serial_port = self._serial_port
             if serial_port is None:
-                time.sleep(RX_POLL_INTERVAL_S)
+                time.sleep(GUI_RX_POLL_INTERVAL_S)
                 continue
 
             try:
                 decoded_packets = self._receiver.process_serial_once(
                     serial_port,
-                    max_read_size=DEFAULT_MAX_READ_SIZE,
+                    max_read_size=EGSE_SERIAL_MAX_READ_SIZE,
                 )
                 for decoded in decoded_packets:
                     self._rx_queue.put(decoded)
             except (OSError, SerialException):
                 self._rx_queue.put(None)
-                time.sleep(RX_POLL_INTERVAL_S)
+                time.sleep(GUI_RX_POLL_INTERVAL_S)
 
-            time.sleep(RX_POLL_INTERVAL_S)
+            time.sleep(GUI_RX_POLL_INTERVAL_S)
 
     def _process_rx_queue(self) -> None:
         try:
@@ -471,7 +487,7 @@ class EgseGuiApp:
         try:
             telemetry_apid = int(self.tm_apid_var.get(), 0)
         except ValueError:
-            telemetry_apid = DEFAULT_TM_APID
+            telemetry_apid = CCSDS_DEFAULT_TM_APID
 
         if packet.apid != telemetry_apid:
             return
