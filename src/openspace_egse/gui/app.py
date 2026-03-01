@@ -72,11 +72,29 @@ except ImportError:
     SerialException = Exception
 
 
+COLOR_BG_MAIN = "#EEF2F8"
+COLOR_BG_SURFACE = "#F8FAFD"
+COLOR_BG_SURFACE_ALT = "#FFFFFF"
+COLOR_BORDER = "#C8D3E3"
+COLOR_TEXT_PRIMARY = "#1E2A3B"
+COLOR_TEXT_MUTED = "#5B6C84"
+COLOR_ACCENT = "#1E6BD6"
+COLOR_ACCENT_HOVER = "#2F7CE4"
+COLOR_DANGER = "#B84E4E"
+COLOR_DANGER_HOVER = "#C96060"
+
+CHART_COLOR_TEMP = "#D64545"
+CHART_COLOR_VOLTAGE = "#1E6BD6"
+CHART_COLOR_CAPACITY = "#2E8B57"
+CHART_GRID_COLOR = "#D9E2EF"
+
+
 class EgseGuiApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title("OpenSpaceEGSE")
         self.root.geometry("1250x760")
+        self.root.configure(bg=COLOR_BG_MAIN)
 
         self._serial_port = None
         self._sender: TcCommandSender | None = None
@@ -96,25 +114,143 @@ class EgseGuiApp:
         self._voltage = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
         self._capacity = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
 
+        self._setup_style()
         self._build_layout()
         self._start_rx_thread()
         self.root.after(GUI_UPDATE_INTERVAL_MS, self._process_rx_queue)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
+    def _setup_style(self) -> None:
+        style = ttk.Style(self.root)
+        style.theme_use("clam")
+
+        self.root.option_add("*Font", "TkDefaultFont 10")
+
+        style.configure("TFrame", background=COLOR_BG_MAIN)
+        style.configure("App.TFrame", background=COLOR_BG_MAIN)
+        style.configure("Card.TFrame", background=COLOR_BG_SURFACE)
+
+        style.configure(
+            "TLabel",
+            background=COLOR_BG_SURFACE,
+            foreground=COLOR_TEXT_PRIMARY,
+        )
+        style.configure(
+            "Muted.TLabel",
+            background=COLOR_BG_SURFACE,
+            foreground=COLOR_TEXT_MUTED,
+        )
+
+        style.configure(
+            "Card.TLabelframe",
+            background=COLOR_BG_SURFACE,
+            bordercolor=COLOR_BORDER,
+            darkcolor=COLOR_BORDER,
+            lightcolor=COLOR_BORDER,
+            relief="solid",
+            borderwidth=1,
+            padding=10,
+        )
+        style.configure(
+            "Card.TLabelframe.Label",
+            background=COLOR_BG_SURFACE,
+            foreground=COLOR_TEXT_PRIMARY,
+            font=("TkDefaultFont", 10, "bold"),
+        )
+
+        style.configure(
+            "Primary.TButton",
+            background=COLOR_ACCENT,
+            foreground="#FFFFFF",
+            borderwidth=0,
+            padding=(10, 7),
+            focusthickness=0,
+        )
+        style.map(
+            "Primary.TButton",
+            background=[("active", COLOR_ACCENT_HOVER), ("pressed", COLOR_ACCENT_HOVER)],
+            foreground=[("disabled", COLOR_TEXT_MUTED)],
+        )
+
+        style.configure(
+            "Danger.TButton",
+            background=COLOR_DANGER,
+            foreground="#FFFFFF",
+            borderwidth=0,
+            padding=(10, 7),
+            focusthickness=0,
+        )
+        style.map(
+            "Danger.TButton",
+            background=[("active", COLOR_DANGER_HOVER), ("pressed", COLOR_DANGER_HOVER)],
+            foreground=[("disabled", COLOR_TEXT_MUTED)],
+        )
+
+        style.configure(
+            "Secondary.TButton",
+            background=COLOR_BG_SURFACE_ALT,
+            foreground=COLOR_TEXT_PRIMARY,
+            bordercolor=COLOR_BORDER,
+            borderwidth=1,
+            padding=(10, 7),
+        )
+        style.map(
+            "Secondary.TButton",
+            background=[("active", "#E9F1FC"), ("pressed", "#E9F1FC")],
+            foreground=[("disabled", COLOR_TEXT_MUTED)],
+        )
+
+        style.configure(
+            "TEntry",
+            fieldbackground=COLOR_BG_SURFACE_ALT,
+            foreground=COLOR_TEXT_PRIMARY,
+            insertcolor=COLOR_TEXT_PRIMARY,
+            bordercolor=COLOR_BORDER,
+            lightcolor=COLOR_BORDER,
+            darkcolor=COLOR_BORDER,
+            padding=5,
+        )
+        style.configure(
+            "TCombobox",
+            fieldbackground=COLOR_BG_SURFACE_ALT,
+            background=COLOR_BG_SURFACE_ALT,
+            foreground=COLOR_TEXT_PRIMARY,
+            arrowcolor=COLOR_TEXT_PRIMARY,
+            bordercolor=COLOR_BORDER,
+            lightcolor=COLOR_BORDER,
+            darkcolor=COLOR_BORDER,
+            padding=4,
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", COLOR_BG_SURFACE_ALT)],
+            background=[("readonly", COLOR_BG_SURFACE_ALT)],
+            foreground=[("readonly", COLOR_TEXT_PRIMARY)],
+            selectbackground=[("readonly", COLOR_BG_SURFACE_ALT)],
+            selectforeground=[("readonly", COLOR_TEXT_PRIMARY)],
+        )
+
+        style.configure("TPanedwindow", background=COLOR_BG_MAIN)
+
     def _build_layout(self) -> None:
         container = ttk.Panedwindow(self.root, orient=tk.HORIZONTAL)
         container.pack(fill=tk.BOTH, expand=True)
 
-        self.control_frame = ttk.Frame(container, padding=12)
-        self.monitor_frame = ttk.Frame(container, padding=12)
-        container.add(self.control_frame, weight=1)
-        container.add(self.monitor_frame, weight=2)
+        self.control_frame = ttk.Frame(container, padding=12, style="App.TFrame")
+        self.monitor_frame = ttk.Frame(container, padding=12, style="App.TFrame")
+        container.add(self.control_frame, weight=2)
+        container.add(self.monitor_frame, weight=3)
 
         self._build_control_panel()
         self._build_monitor_panel()
 
     def _build_control_panel(self) -> None:
-        conn_group = ttk.LabelFrame(self.control_frame, text="Connection", padding=10)
+        conn_group = ttk.LabelFrame(
+            self.control_frame,
+            text="Connection",
+            style="Card.TLabelframe",
+            padding=10,
+        )
         conn_group.pack(fill=tk.X, pady=(0, 8))
 
         ttk.Label(conn_group, text="Port").grid(row=0, column=0, sticky=tk.W)
@@ -135,16 +271,31 @@ class EgseGuiApp:
             textvariable=self.connection_status_var,
         ).grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
 
-        button_row = ttk.Frame(conn_group)
+        button_row = ttk.Frame(conn_group, style="Card.TFrame")
         button_row.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(8, 0))
-        ttk.Button(button_row, text="Connect", command=self._connect).pack(
+        ttk.Button(
+            button_row,
+            text="Connect",
+            command=self._connect,
+            style="Primary.TButton",
+        ).pack(
             side=tk.LEFT
         )
-        ttk.Button(button_row, text="Disconnect", command=self._disconnect).pack(
+        ttk.Button(
+            button_row,
+            text="Disconnect",
+            command=self._disconnect,
+            style="Danger.TButton",
+        ).pack(
             side=tk.LEFT, padx=(8, 0)
         )
 
-        tc_group = ttk.LabelFrame(self.control_frame, text="TC Control", padding=10)
+        tc_group = ttk.LabelFrame(
+            self.control_frame,
+            text="TC Control",
+            style="Card.TLabelframe",
+            padding=10,
+        )
         tc_group.pack(fill=tk.X, pady=(0, 8))
 
         ttk.Label(tc_group, text="SCID").grid(row=0, column=0, sticky=tk.W)
@@ -200,7 +351,12 @@ class EgseGuiApp:
             pady=(6, 0),
         )
 
-        ttk.Button(tc_group, text="Send TC", command=self._send_tc).grid(
+        ttk.Button(
+            tc_group,
+            text="Send TC",
+            command=self._send_tc,
+            style="Primary.TButton",
+        ).grid(
             row=7,
             column=0,
             columnspan=2,
@@ -208,33 +364,63 @@ class EgseGuiApp:
             pady=(10, 0),
         )
 
-        sim_group = ttk.LabelFrame(self.control_frame, text="Simulation", padding=10)
+        sim_group = ttk.LabelFrame(
+            self.control_frame,
+            text="Simulation",
+            style="Card.TLabelframe",
+            padding=10,
+        )
         sim_group.pack(fill=tk.X, pady=(0, 8))
         ttk.Button(
             sim_group,
             text="Inject Simulated Telemetry",
             command=self._inject_simulated_telemetry,
+            style="Secondary.TButton",
         ).pack(anchor=tk.W)
         self.auto_sim_button = ttk.Button(
             sim_group,
             text="Start Auto Simulation (1 Hz)",
             command=self._toggle_auto_simulation,
+            style="Secondary.TButton",
         )
         self.auto_sim_button.pack(anchor=tk.W, pady=(6, 0))
         ttk.Label(
             sim_group,
             text="Builds TM frame and feeds it to receive pipeline",
+            style="Muted.TLabel",
         ).pack(anchor=tk.W, pady=(6, 0))
 
-        log_group = ttk.LabelFrame(self.control_frame, text="Event Log", padding=10)
+        log_group = ttk.LabelFrame(
+            self.control_frame,
+            text="Event Log",
+            style="Card.TLabelframe",
+            padding=10,
+        )
         log_group.pack(fill=tk.BOTH, expand=True)
-        self.log_text = tk.Text(log_group, height=18, state=tk.DISABLED)
+        self.log_text = tk.Text(
+            log_group,
+            height=24,
+            state=tk.DISABLED,
+            bg=COLOR_BG_SURFACE_ALT,
+            fg=COLOR_TEXT_PRIMARY,
+            insertbackground=COLOR_TEXT_PRIMARY,
+            highlightthickness=1,
+            highlightbackground=COLOR_BORDER,
+            relief="flat",
+            padx=8,
+            pady=8,
+        )
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
         self._on_command_changed()
 
     def _build_monitor_panel(self) -> None:
-        status_group = ttk.LabelFrame(self.monitor_frame, text="State", padding=10)
+        status_group = ttk.LabelFrame(
+            self.monitor_frame,
+            text="State",
+            style="Card.TLabelframe",
+            padding=10,
+        )
         status_group.pack(fill=tk.X)
 
         self.state_status_var = tk.StringVar(value="Status: -")
@@ -249,22 +435,38 @@ class EgseGuiApp:
         ttk.Label(status_group, textvariable=self.state_capacity_var).pack(anchor=tk.W)
         ttk.Label(status_group, textvariable=self.state_update_var).pack(anchor=tk.W)
 
-        charts_group = ttk.LabelFrame(self.monitor_frame, text="Telemetry Charts", padding=10)
+        charts_group = ttk.LabelFrame(
+            self.monitor_frame,
+            text="Telemetry Charts",
+            style="Card.TLabelframe",
+            padding=10,
+        )
         charts_group.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
 
         self.figure = Figure(figsize=(8.5, 6.5), dpi=100)
+        self.figure.patch.set_facecolor(COLOR_BG_SURFACE)
         self.ax_temp = self.figure.add_subplot(311)
         self.ax_voltage = self.figure.add_subplot(312)
         self.ax_capacity = self.figure.add_subplot(313)
 
-        self.temp_line, = self.ax_temp.plot([], [], color="tab:red")
-        self.voltage_line, = self.ax_voltage.plot([], [], color="tab:blue")
-        self.capacity_line, = self.ax_capacity.plot([], [], color="tab:green")
+        self.temp_line, = self.ax_temp.plot([], [], color=CHART_COLOR_TEMP, linewidth=2.0)
+        self.voltage_line, = self.ax_voltage.plot([], [], color=CHART_COLOR_VOLTAGE, linewidth=2.0)
+        self.capacity_line, = self.ax_capacity.plot([], [], color=CHART_COLOR_CAPACITY, linewidth=2.0)
 
         self.ax_temp.set_title("Temperature [°C]")
         self.ax_voltage.set_title("Voltage [V]")
         self.ax_capacity.set_title("Battery Capacity [%]")
         self.ax_capacity.set_xlabel("Sample")
+
+        for axis in (self.ax_temp, self.ax_voltage, self.ax_capacity):
+            axis.set_facecolor(COLOR_BG_SURFACE)
+            axis.grid(True, color=CHART_GRID_COLOR, linewidth=0.8, alpha=0.7)
+            axis.tick_params(colors=COLOR_TEXT_MUTED, labelsize=9)
+            axis.xaxis.label.set_color(COLOR_TEXT_MUTED)
+            axis.yaxis.label.set_color(COLOR_TEXT_MUTED)
+            axis.title.set_color(COLOR_TEXT_PRIMARY)
+            for spine in axis.spines.values():
+                spine.set_color(COLOR_BORDER)
 
         self.figure.tight_layout()
         self.canvas = FigureCanvasTkAgg(self.figure, master=charts_group)
