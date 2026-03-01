@@ -10,9 +10,16 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+openspace-egse-gui = "openspace_egse.gui.app:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
+]
+gui = [
+    "matplotlib>=3.8",
+    "pyserial>=3.5",
 ]
 
 [tool.setuptools]

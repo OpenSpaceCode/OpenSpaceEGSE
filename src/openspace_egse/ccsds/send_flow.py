@@ -26,6 +26,41 @@ class TcCommandName(str, Enum):
     PING = "ping"
     SET_MODE = "set_mode"
     RESET_SUBSYSTEM = "reset_subsystem"
+    REQUEST_STATUS = "request_status"
+
+
+@dataclass(slots=True, frozen=True)
+class TcCommandDefinition:
+    command: TcCommandName
+    requires_parameter: bool
+    parameter_min: int | None = None
+    parameter_max: int | None = None
+
+
+_TC_COMMAND_DEFINITIONS: dict[TcCommandName, TcCommandDefinition] = {
+    TcCommandName.PING: TcCommandDefinition(
+        command=TcCommandName.PING,
+        requires_parameter=True,
+        parameter_min=0,
+        parameter_max=UINT16_MAX,
+    ),
+    TcCommandName.SET_MODE: TcCommandDefinition(
+        command=TcCommandName.SET_MODE,
+        requires_parameter=True,
+        parameter_min=UINT8_MIN,
+        parameter_max=UINT8_MAX,
+    ),
+    TcCommandName.RESET_SUBSYSTEM: TcCommandDefinition(
+        command=TcCommandName.RESET_SUBSYSTEM,
+        requires_parameter=True,
+        parameter_min=UINT8_MIN,
+        parameter_max=UINT8_MAX,
+    ),
+    TcCommandName.REQUEST_STATUS: TcCommandDefinition(
+        command=TcCommandName.REQUEST_STATUS,
+        requires_parameter=False,
+    ),
+}
 
 
 @dataclass(slots=True, frozen=True)
@@ -40,7 +75,7 @@ class TcSendConfig:
 @dataclass(slots=True, frozen=True)
 class SentTcCommand:
     command: TcCommandName
-    parameter: int
+    parameter: int | None
     command_payload: bytes
     space_packet: SpacePacket
     tc_transfer_frame: TcTransferFrame
@@ -67,7 +102,11 @@ class TcCommandSender:
         self._packet_sequence_count = initial_packet_sequence_count
         self._frame_sequence_number = initial_frame_sequence_number
 
-    def send(self, command: TcCommandName | str, parameter: int) -> SentTcCommand:
+    def send(
+        self,
+        command: TcCommandName | str,
+        parameter: int | None = None,
+    ) -> SentTcCommand:
         command_name = _normalize_command_name(command)
         command_payload = build_tc_command_payload(command_name, parameter)
 
@@ -122,20 +161,40 @@ def available_tc_commands() -> tuple[str, ...]:
     return tuple(item.value for item in TcCommandName)
 
 
-def build_tc_command_payload(command: TcCommandName | str, parameter: int) -> bytes:
+def tc_command_definition(command: TcCommandName | str) -> TcCommandDefinition:
     command_name = _normalize_command_name(command)
+    return _TC_COMMAND_DEFINITIONS[command_name]
+
+
+def build_tc_command_payload(
+    command: TcCommandName | str,
+    parameter: int | None = None,
+) -> bytes:
+    command_name = _normalize_command_name(command)
+    definition = _TC_COMMAND_DEFINITIONS[command_name]
+
+    if definition.requires_parameter and parameter is None:
+        raise ValueError(f"Command '{command_name.value}' requires a parameter")
+    if not definition.requires_parameter and parameter is not None:
+        raise ValueError(f"Command '{command_name.value}' does not accept a parameter")
 
     if command_name == TcCommandName.PING:
+        assert parameter is not None
         _validate_u16(parameter, name="parameter")
         return bytes((0x01,)) + parameter.to_bytes(2, "big")
 
     if command_name == TcCommandName.SET_MODE:
+        assert parameter is not None
         _validate_u8(parameter, name="parameter")
         return bytes((0x02, parameter))
 
     if command_name == TcCommandName.RESET_SUBSYSTEM:
+        assert parameter is not None
         _validate_u8(parameter, name="parameter")
         return bytes((0x03, parameter))
+
+    if command_name == TcCommandName.REQUEST_STATUS:
+        return bytes((0x04,))
 
     raise ValueError(f"Unsupported command: {command_name}")
 

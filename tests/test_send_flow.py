@@ -23,13 +23,19 @@ class FakeSerialWriter:
 
 
 def test_available_tc_commands() -> None:
-    assert available_tc_commands() == ("ping", "set_mode", "reset_subsystem")
+    assert available_tc_commands() == (
+        "ping",
+        "set_mode",
+        "reset_subsystem",
+        "request_status",
+    )
 
 
 def test_build_tc_command_payloads() -> None:
     assert build_tc_command_payload(TcCommandName.PING, 258) == b"\x01\x01\x02"
     assert build_tc_command_payload("set_mode", 3) == b"\x02\x03"
     assert build_tc_command_payload("reset_subsystem", 4) == b"\x03\x04"
+    assert build_tc_command_payload("request_status") == b"\x04"
 
 
 def test_build_payload_rejects_invalid_parameter_ranges() -> None:
@@ -38,6 +44,14 @@ def test_build_payload_rejects_invalid_parameter_ranges() -> None:
 
     with pytest.raises(ValueError, match="0..65535"):
         build_tc_command_payload("ping", 70000)
+
+
+def test_build_payload_rejects_bad_parameter_presence() -> None:
+    with pytest.raises(ValueError, match="requires a parameter"):
+        build_tc_command_payload("set_mode")
+
+    with pytest.raises(ValueError, match="does not accept a parameter"):
+        build_tc_command_payload("request_status", 1)
 
 
 def test_sender_send_builds_uart_stream_and_is_decodable() -> None:
