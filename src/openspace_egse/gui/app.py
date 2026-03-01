@@ -54,6 +54,7 @@ from openspace_egse.config import (
     SIM_VOLTAGE_BASE_MV,
     SIM_VOLTAGE_SPAN_SAMPLES,
     SIM_VOLTAGE_STEP_MV,
+    PROJECT_ROOT,
 )
 
 from openspace_egse.ccsds import (
@@ -430,7 +431,9 @@ class EgseGuiApp:
         log_options.pack(fill=tk.X, pady=(0, 8))
 
         self.log_to_file_var = tk.BooleanVar(value=GUI_EVENT_LOG_TO_FILE_DEFAULT)
-        self.log_file_path_var = tk.StringVar(value=GUI_EVENT_LOG_FILE_DEFAULT)
+        self.log_file_path_var = tk.StringVar(value="")
+        self.log_file_path_display_var = tk.StringVar(value="")
+        self._set_log_file_path(GUI_EVENT_LOG_FILE_DEFAULT)
         ttk.Checkbutton(
             log_options,
             text="Log to file",
@@ -445,7 +448,7 @@ class EgseGuiApp:
         ).pack(side=tk.LEFT, padx=(8, 0))
         ttk.Label(
             log_options,
-            textvariable=self.log_file_path_var,
+            textvariable=self.log_file_path_display_var,
             style="Muted.TLabel",
         ).pack(side=tk.LEFT, padx=(10, 0))
 
@@ -871,26 +874,46 @@ class EgseGuiApp:
 
         path_text = self.log_file_path_var.get().strip()
         if not path_text:
-            self.log_file_path_var.set(GUI_EVENT_LOG_FILE_DEFAULT)
+            self._set_log_file_path(GUI_EVENT_LOG_FILE_DEFAULT)
 
-        self._log(f"File logging enabled: {self.log_file_path_var.get()}")
+        self._log(
+            f"File logging enabled: {self.log_file_path_display_var.get()}"
+        )
 
     def _choose_log_file(self) -> None:
         if filedialog is None:
             messagebox.showerror("Unavailable", "File dialog is unavailable")
             return
 
+        current_path = Path(self.log_file_path_var.get()).expanduser()
+
         selected = filedialog.asksaveasfilename(
             title="Select event log file",
-            initialfile=Path(self.log_file_path_var.get()).name,
+            initialdir=str(current_path.parent),
+            initialfile=current_path.name,
             defaultextension=".log",
             filetypes=[("Log files", "*.log"), ("Text files", "*.txt"), ("All files", "*.*")],
         )
         if not selected:
             return
 
-        self.log_file_path_var.set(selected)
-        self._log(f"Log file selected: {selected}")
+        self._set_log_file_path(selected)
+        self._log(f"Log file selected: {self.log_file_path_display_var.get()}")
+
+    def _set_log_file_path(self, path_text: str) -> None:
+        resolved = str(Path(path_text).expanduser())
+        self.log_file_path_var.set(resolved)
+        self.log_file_path_display_var.set(
+            self._format_log_path_for_display(resolved)
+        )
+
+    def _format_log_path_for_display(self, path_text: str) -> str:
+        path = Path(path_text).expanduser()
+        try:
+            relative = path.relative_to(PROJECT_ROOT)
+            return str(relative)
+        except ValueError:
+            return str(path)
 
     def _on_close(self) -> None:
         self._stop_auto_simulation()

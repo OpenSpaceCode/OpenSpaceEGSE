@@ -1,5 +1,9 @@
 """Project-wide configurable runtime parameters for OpenSpaceEGSE."""
 
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 EGSE_SERIAL_PORT_DEFAULT = "/dev/ttyUSB0"
 EGSE_SERIAL_BAUDRATE_DEFAULT = 115200
@@ -11,7 +15,7 @@ GUI_UPDATE_INTERVAL_MS = 200
 GUI_SIM_FREQUENCY_OPTIONS_HZ = (0.5, 1.0, 2.0, 5.0)
 GUI_SIM_FREQUENCY_DEFAULT_INDEX = 1
 GUI_EVENT_LOG_TO_FILE_DEFAULT = False
-GUI_EVENT_LOG_FILE_DEFAULT = "egse_events.log"
+GUI_EVENT_LOG_FILE_DEFAULT = str(PROJECT_ROOT / "logs" / "egse_events.log")
 
 CCSDS_DEFAULT_SPACECRAFT_ID = 1
 CCSDS_DEFAULT_VIRTUAL_CHANNEL_ID = 0
