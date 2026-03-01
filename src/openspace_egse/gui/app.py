@@ -437,6 +437,15 @@ class EgseGuiApp:
         )
         status_group.pack(fill=tk.X)
 
+        status_header = ttk.Frame(status_group, style="Card.TFrame")
+        status_header.pack(fill=tk.X, pady=(0, 6))
+        ttk.Button(
+            status_header,
+            text="Clear Telemetry Data",
+            command=self._clear_telemetry_data,
+            style="Secondary.TButton",
+        ).pack(side=tk.RIGHT)
+
         self.state_status_var = tk.StringVar(value="Status: -")
         self.state_temp_var = tk.StringVar(value="Temperature: -")
         self.state_voltage_var = tk.StringVar(value="Voltage: -")
@@ -781,6 +790,22 @@ class EgseGuiApp:
             axis.autoscale_view()
 
         self.canvas.draw_idle()
+
+    def _clear_telemetry_data(self) -> None:
+        self._x.clear()
+        self._temperature.clear()
+        self._voltage.clear()
+        self._capacity.clear()
+        self._sample_index = 0
+
+        self.state_status_var.set("Status: -")
+        self.state_temp_var.set("Temperature: -")
+        self.state_voltage_var.set("Voltage: -")
+        self.state_capacity_var.set("Battery Capacity: -")
+        self.state_update_var.set("Last Update: -")
+
+        self._refresh_plots()
+        self._log("Telemetry data cleared")
 
     def _log(self, text: str) -> None:
         timestamp = datetime.now().strftime("%H:%M:%S")
