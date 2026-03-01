@@ -5,14 +5,16 @@ import threading
 import time
 from collections import deque
 from datetime import datetime
+from pathlib import Path
 
 try:
     import tkinter as tk
-    from tkinter import messagebox, ttk
+    from tkinter import filedialog, messagebox, ttk
 
     TK_AVAILABLE = True
 except ImportError:
     tk = None
+    filedialog = None
     messagebox = None
     ttk = None
     TK_AVAILABLE = False
@@ -37,6 +39,8 @@ from openspace_egse.config import (
     EGSE_SERIAL_PORT_DEFAULT,
     GUI_PLOT_HISTORY_LENGTH,
     GUI_RX_POLL_INTERVAL_S,
+    GUI_EVENT_LOG_FILE_DEFAULT,
+    GUI_EVENT_LOG_TO_FILE_DEFAULT,
     GUI_SIM_FREQUENCY_DEFAULT_INDEX,
     GUI_SIM_FREQUENCY_OPTIONS_HZ,
     GUI_UPDATE_INTERVAL_MS,
@@ -141,6 +145,16 @@ class EgseGuiApp:
             "TLabel",
             background=COLOR_BG_SURFACE,
             foreground=COLOR_TEXT_PRIMARY,
+        )
+        style.configure(
+            "TCheckbutton",
+            background=COLOR_BG_SURFACE,
+            foreground=COLOR_TEXT_PRIMARY,
+        )
+        style.map(
+            "TCheckbutton",
+            background=[("active", COLOR_BG_SURFACE)],
+            foreground=[("disabled", COLOR_TEXT_MUTED)],
         )
         style.configure(
             "Muted.TLabel",
@@ -411,6 +425,30 @@ class EgseGuiApp:
             padding=10,
         )
         log_group.pack(fill=tk.BOTH, expand=True)
+
+        log_options = ttk.Frame(log_group, style="Card.TFrame")
+        log_options.pack(fill=tk.X, pady=(0, 8))
+
+        self.log_to_file_var = tk.BooleanVar(value=GUI_EVENT_LOG_TO_FILE_DEFAULT)
+        self.log_file_path_var = tk.StringVar(value=GUI_EVENT_LOG_FILE_DEFAULT)
+        ttk.Checkbutton(
+            log_options,
+            text="Log to file",
+            variable=self.log_to_file_var,
+            command=self._on_log_to_file_toggled,
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            log_options,
+            text="Choose File",
+            command=self._choose_log_file,
+            style="Secondary.TButton",
+        ).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Label(
+            log_options,
+            textvariable=self.log_file_path_var,
+            style="Muted.TLabel",
+        ).pack(side=tk.LEFT, padx=(10, 0))
+
         self.log_text = tk.Text(
             log_group,
             height=24,
@@ -809,10 +847,50 @@ class EgseGuiApp:
 
     def _log(self, text: str) -> None:
         timestamp = datetime.now().strftime("%H:%M:%S")
+        line = f"[{timestamp}] {text}"
         self.log_text.configure(state=tk.NORMAL)
-        self.log_text.insert(tk.END, f"[{timestamp}] {text}\n")
+        self.log_text.insert(tk.END, f"{line}\n")
         self.log_text.see(tk.END)
         self.log_text.configure(state=tk.DISABLED)
+
+        if self.log_to_file_var.get():
+            try:
+                log_file_path = Path(self.log_file_path_var.get()).expanduser()
+                if log_file_path.parent and str(log_file_path.parent) not in ("", "."):
+                    log_file_path.parent.mkdir(parents=True, exist_ok=True)
+                with log_file_path.open("a", encoding="utf-8") as handle:
+                    handle.write(f"{line}\n")
+            except OSError as exc:
+                self.log_to_file_var.set(False)
+                messagebox.showerror("Log file error", str(exc))
+
+    def _on_log_to_file_toggled(self) -> None:
+        if not self.log_to_file_var.get():
+            self._log("File logging disabled")
+            return
+
+        path_text = self.log_file_path_var.get().strip()
+        if not path_text:
+            self.log_file_path_var.set(GUI_EVENT_LOG_FILE_DEFAULT)
+
+        self._log(f"File logging enabled: {self.log_file_path_var.get()}")
+
+    def _choose_log_file(self) -> None:
+        if filedialog is None:
+            messagebox.showerror("Unavailable", "File dialog is unavailable")
+            return
+
+        selected = filedialog.asksaveasfilename(
+            title="Select event log file",
+            initialfile=Path(self.log_file_path_var.get()).name,
+            defaultextension=".log",
+            filetypes=[("Log files", "*.log"), ("Text files", "*.txt"), ("All files", "*.*")],
+        )
+        if not selected:
+            return
+
+        self.log_file_path_var.set(selected)
+        self._log(f"Log file selected: {selected}")
 
     def _on_close(self) -> None:
         self._stop_auto_simulation()
