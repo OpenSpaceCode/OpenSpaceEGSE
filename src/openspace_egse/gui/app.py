@@ -29,9 +29,12 @@ except ImportError:
 
 from openspace_egse.ccsds import (
     PacketType,
+    SpacePacket,
     SdlpSpacePacketReceiver,
+    SdlpUartStreamSerializer,
     TcCommandSender,
     TcSendConfig,
+    TmTransferFrame,
     available_tc_commands,
     decode_telemetry_payload,
     tc_command_definition,
@@ -55,6 +58,8 @@ DEFAULT_TM_APID = 200
 DEFAULT_SCID = 1
 DEFAULT_VCID = 0
 DEFAULT_MAX_READ_SIZE = 4096
+SIM_STATUS_CYCLE = 5
+AUTO_SIM_INTERVAL_MS = 1000
 
 
 class EgseGuiApp:
@@ -72,6 +77,10 @@ class EgseGuiApp:
         self._rx_thread: threading.Thread | None = None
 
         self._sample_index = 0
+        self._sim_tm_packet_sequence = 0
+        self._sim_tm_frame_count = 0
+        self._auto_sim_running = False
+        self._auto_sim_after_id: str | None = None
         self._x = deque(maxlen=PLOT_HISTORY_LENGTH)
         self._temperature = deque(maxlen=PLOT_HISTORY_LENGTH)
         self._voltage = deque(maxlen=PLOT_HISTORY_LENGTH)
@@ -188,6 +197,24 @@ class EgseGuiApp:
             sticky=tk.W,
             pady=(10, 0),
         )
+
+        sim_group = ttk.LabelFrame(self.control_frame, text="Simulation", padding=10)
+        sim_group.pack(fill=tk.X, pady=(0, 8))
+        ttk.Button(
+            sim_group,
+            text="Inject Simulated Telemetry",
+            command=self._inject_simulated_telemetry,
+        ).pack(anchor=tk.W)
+        self.auto_sim_button = ttk.Button(
+            sim_group,
+            text="Start Auto Simulation (1 Hz)",
+            command=self._toggle_auto_simulation,
+        )
+        self.auto_sim_button.pack(anchor=tk.W, pady=(6, 0))
+        ttk.Label(
+            sim_group,
+            text="Builds TM frame and feeds it to receive pipeline",
+        ).pack(anchor=tk.W, pady=(6, 0))
 
         log_group = ttk.LabelFrame(self.control_frame, text="Event Log", padding=10)
         log_group.pack(fill=tk.BOTH, expand=True)
@@ -317,6 +344,87 @@ class EgseGuiApp:
         except (ValueError, OSError) as exc:
             messagebox.showerror("Send failed", str(exc))
 
+    def _inject_simulated_telemetry(self) -> None:
+        try:
+            tm_apid = int(self.tm_apid_var.get(), 0)
+            spacecraft_id = int(self.scid_var.get(), 0)
+            virtual_channel_id = int(self.vcid_var.get(), 0)
+        except ValueError as exc:
+            messagebox.showerror("Simulation failed", f"Invalid numeric field: {exc}")
+            return
+
+        payload = self._build_simulated_telemetry_payload()
+        space_packet = SpacePacket.build_tm(
+            apid=tm_apid,
+            sequence_count=self._sim_tm_packet_sequence,
+            payload=payload,
+        )
+        tm_frame = TmTransferFrame.build(
+            spacecraft_id=spacecraft_id,
+            virtual_channel_id=virtual_channel_id,
+            master_channel_frame_count=self._sim_tm_frame_count,
+            virtual_channel_frame_count=self._sim_tm_frame_count,
+            payload=space_packet.encode(),
+            first_header_pointer=0,
+        )
+        uart_stream = SdlpUartStreamSerializer.serialize_tm(tm_frame)
+
+        decoded_packets = self._receiver.process_uart_bytes(uart_stream)
+        for decoded in decoded_packets:
+            self._handle_decoded_packet(decoded)
+
+        self._sim_tm_packet_sequence = (self._sim_tm_packet_sequence + 1) & 0x3FFF
+        self._sim_tm_frame_count = (self._sim_tm_frame_count + 1) & 0xFF
+        self._log(
+            "Injected simulated telemetry "
+            f"temp={payload[1:3].hex().upper()} "
+            f"volt={payload[3:5].hex().upper()} "
+            f"cap={payload[5:7].hex().upper()}"
+        )
+
+    def _build_simulated_telemetry_payload(self) -> bytes:
+        index = self._sim_tm_packet_sequence
+        status_code = index % SIM_STATUS_CYCLE
+
+        temperature_centi_c = 2000 + ((index % 40) * 25)
+        voltage_millivolt = 4800 + ((index % 25) * 8)
+        battery_deci_pct = 900 - (index % 120)
+
+        return (
+            bytes((status_code,))
+            + int(temperature_centi_c).to_bytes(2, "big", signed=True)
+            + int(voltage_millivolt).to_bytes(2, "big", signed=False)
+            + int(battery_deci_pct).to_bytes(2, "big", signed=False)
+        )
+
+    def _toggle_auto_simulation(self) -> None:
+        if self._auto_sim_running:
+            self._stop_auto_simulation()
+            self._log("Auto simulation stopped")
+            return
+
+        self._auto_sim_running = True
+        self.auto_sim_button.configure(text="Stop Auto Simulation")
+        self._log("Auto simulation started (1 Hz)")
+        self._run_auto_simulation_step()
+
+    def _run_auto_simulation_step(self) -> None:
+        if not self._auto_sim_running:
+            return
+
+        self._inject_simulated_telemetry()
+        self._auto_sim_after_id = self.root.after(
+            AUTO_SIM_INTERVAL_MS,
+            self._run_auto_simulation_step,
+        )
+
+    def _stop_auto_simulation(self) -> None:
+        self._auto_sim_running = False
+        self.auto_sim_button.configure(text="Start Auto Simulation (1 Hz)")
+        if self._auto_sim_after_id is not None:
+            self.root.after_cancel(self._auto_sim_after_id)
+            self._auto_sim_after_id = None
+
     def _start_rx_thread(self) -> None:
         self._rx_thread = threading.Thread(target=self._rx_loop, daemon=True)
         self._rx_thread.start()
@@ -414,6 +522,7 @@ class EgseGuiApp:
         self.log_text.configure(state=tk.DISABLED)
 
     def _on_close(self) -> None:
+        self._stop_auto_simulation()
         self._rx_stop_event.set()
         self._disconnect()
         self.root.destroy()
