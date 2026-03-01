@@ -35,9 +35,10 @@ from openspace_egse.config import (
     EGSE_SERIAL_BAUDRATE_DEFAULT,
     EGSE_SERIAL_MAX_READ_SIZE,
     EGSE_SERIAL_PORT_DEFAULT,
-    GUI_AUTO_SIM_INTERVAL_MS,
     GUI_PLOT_HISTORY_LENGTH,
     GUI_RX_POLL_INTERVAL_S,
+    GUI_SIM_FREQUENCY_DEFAULT_INDEX,
+    GUI_SIM_FREQUENCY_OPTIONS_HZ,
     GUI_UPDATE_INTERVAL_MS,
     SIM_CAPACITY_BASE_DECI_PCT,
     SIM_CAPACITY_DECREMENT_PER_SAMPLE,
@@ -109,10 +110,16 @@ class EgseGuiApp:
         self._sim_tm_frame_count = 0
         self._auto_sim_running = False
         self._auto_sim_after_id: str | None = None
+        self._sim_frequency_index = GUI_SIM_FREQUENCY_DEFAULT_INDEX
         self._x = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
         self._temperature = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
         self._voltage = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
         self._capacity = deque(maxlen=GUI_PLOT_HISTORY_LENGTH)
+
+        if not GUI_SIM_FREQUENCY_OPTIONS_HZ:
+            raise ValueError("GUI_SIM_FREQUENCY_OPTIONS_HZ must not be empty")
+        if not 0 <= self._sim_frequency_index < len(GUI_SIM_FREQUENCY_OPTIONS_HZ):
+            self._sim_frequency_index = 0
 
         self._setup_style()
         self._build_layout()
@@ -377,9 +384,16 @@ class EgseGuiApp:
             command=self._inject_simulated_telemetry,
             style="Secondary.TButton",
         ).pack(anchor=tk.W)
+        self.sim_frequency_button = ttk.Button(
+            sim_group,
+            text=self._sim_frequency_button_text(),
+            command=self._toggle_sim_frequency,
+            style="Secondary.TButton",
+        )
+        self.sim_frequency_button.pack(anchor=tk.W, pady=(6, 0))
         self.auto_sim_button = ttk.Button(
             sim_group,
-            text="Start Auto Simulation (1 Hz)",
+            text=self._auto_sim_button_text(),
             command=self._toggle_auto_simulation,
             style="Secondary.TButton",
         )
@@ -622,8 +636,10 @@ class EgseGuiApp:
             return
 
         self._auto_sim_running = True
-        self.auto_sim_button.configure(text="Stop Auto Simulation")
-        self._log("Auto simulation started (1 Hz)")
+        self.auto_sim_button.configure(text=self._auto_sim_button_text())
+        self._log(
+            f"Auto simulation started ({self._current_sim_frequency_hz():g} Hz)"
+        )
         self._run_auto_simulation_step()
 
     def _run_auto_simulation_step(self) -> None:
@@ -632,16 +648,50 @@ class EgseGuiApp:
 
         self._inject_simulated_telemetry()
         self._auto_sim_after_id = self.root.after(
-            GUI_AUTO_SIM_INTERVAL_MS,
+            self._current_auto_sim_interval_ms(),
             self._run_auto_simulation_step,
         )
 
     def _stop_auto_simulation(self) -> None:
         self._auto_sim_running = False
-        self.auto_sim_button.configure(text="Start Auto Simulation (1 Hz)")
+        self.auto_sim_button.configure(text=self._auto_sim_button_text())
         if self._auto_sim_after_id is not None:
             self.root.after_cancel(self._auto_sim_after_id)
             self._auto_sim_after_id = None
+
+    def _toggle_sim_frequency(self) -> None:
+        self._sim_frequency_index = (
+            self._sim_frequency_index + 1
+        ) % len(GUI_SIM_FREQUENCY_OPTIONS_HZ)
+        self.sim_frequency_button.configure(text=self._sim_frequency_button_text())
+        self.auto_sim_button.configure(text=self._auto_sim_button_text())
+        self._log(
+            f"Simulation frequency set to {self._current_sim_frequency_hz():g} Hz"
+        )
+
+        if self._auto_sim_running:
+            if self._auto_sim_after_id is not None:
+                self.root.after_cancel(self._auto_sim_after_id)
+            self._auto_sim_after_id = self.root.after(
+                self._current_auto_sim_interval_ms(),
+                self._run_auto_simulation_step,
+            )
+
+    def _sim_frequency_button_text(self) -> str:
+        return f"Simulation Rate: {self._current_sim_frequency_hz():g} Hz"
+
+    def _auto_sim_button_text(self) -> str:
+        action = "Stop" if self._auto_sim_running else "Start"
+        return f"{action} Auto Simulation ({self._current_sim_frequency_hz():g} Hz)"
+
+    def _current_sim_frequency_hz(self) -> float:
+        return float(GUI_SIM_FREQUENCY_OPTIONS_HZ[self._sim_frequency_index])
+
+    def _current_auto_sim_interval_ms(self) -> int:
+        frequency_hz = self._current_sim_frequency_hz()
+        if frequency_hz <= 0:
+            raise ValueError("Simulation frequency must be positive")
+        return max(1, int(round(1000.0 / frequency_hz)))
 
     def _start_rx_thread(self) -> None:
         self._rx_thread = threading.Thread(target=self._rx_loop, daemon=True)
