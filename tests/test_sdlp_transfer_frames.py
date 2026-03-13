@@ -15,8 +15,8 @@ def test_tm_transfer_frame_roundtrip_with_ocf_and_fecf() -> None:
         synch_flag=False,
         packet_order_flag=False,
         segment_length_id=0b11,
-        ocf=b"\xAA\xBB\xCC\xDD",
-        fecf=b"\xEE\xFF",
+        ocf=b"\xaa\xbb\xcc\xdd",
+        fecf=b"\xee\xff",
     )
 
     raw = frame.encode()
@@ -103,7 +103,7 @@ def test_tc_decode_raises_on_length_mismatch() -> None:
             "first_header_pointer": 0,
             "data_field": b"\x00",
             "ocf_flag": True,
-            "ocf": b"\xAA",
+            "ocf": b"\xaa",
         },
     ],
 )

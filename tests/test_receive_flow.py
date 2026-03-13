@@ -34,7 +34,7 @@ def test_receive_flow_tm_reverse_path() -> None:
     source_packet = SpacePacket.build_tm(
         apid=45,
         sequence_count=7,
-        payload=b"\xDE\xAD\xBE\xEF",
+        payload=b"\xde\xad\xbe\xef",
     )
     tm_frame = TmTransferFrame.build(
         spacecraft_id=1,
@@ -78,7 +78,7 @@ def test_receive_and_print_once_prints_packet_line(capsys) -> None:
     source_packet = SpacePacket.build_tm(
         apid=5,
         sequence_count=1,
-        payload=b"\xAA\xBB",
+        payload=b"\xaa\xbb",
     )
     tm_frame = TmTransferFrame.build(
         spacecraft_id=1,

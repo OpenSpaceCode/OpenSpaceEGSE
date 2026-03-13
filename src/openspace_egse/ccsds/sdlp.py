@@ -108,7 +108,9 @@ class TmTransferFrame:
         segment_length_id = (second_word >> 11) & 0x03
         first_header_pointer = second_word & 0x07FF
 
-        trailer_len = (TM_OCF_LENGTH if ocf_flag else 0) + (FECF_LENGTH if has_fecf else 0)
+        trailer_len = (TM_OCF_LENGTH if ocf_flag else 0) + (
+            FECF_LENGTH if has_fecf else 0
+        )
         if len(raw_frame) < TM_PRIMARY_HEADER_LENGTH + trailer_len:
             raise ValueError("raw_frame is shorter than TM header plus trailer")
 
@@ -224,9 +226,8 @@ class TcTransferFrame:
             | ((self.reserved & 0x03) << 10)
             | (self.spacecraft_id & 0x03FF)
         )
-        second_word = (
-            ((self.virtual_channel_id & 0x3F) << 10)
-            | (self.frame_length_field & 0x03FF)
+        second_word = ((self.virtual_channel_id & 0x3F) << 10) | (
+            self.frame_length_field & 0x03FF
         )
         frame = bytearray()
         frame += first_word.to_bytes(2, "big")

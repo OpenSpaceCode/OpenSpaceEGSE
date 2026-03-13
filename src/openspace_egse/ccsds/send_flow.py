@@ -18,8 +18,7 @@ UINT16_MAX = 0xFFFF
 
 
 class SerialWriteLike(Protocol):
-    def write(self, data: bytes) -> int | None:
-        ...
+    def write(self, data: bytes) -> int | None: ...
 
 
 class TcCommandName(str, Enum):
@@ -127,7 +126,9 @@ class TcCommandSender:
 
         uart_bytes = SdlpUartStreamSerializer.serialize_tc(tc_transfer_frame)
         bytes_written_raw = self._serial_port.write(uart_bytes)
-        bytes_written = len(uart_bytes) if bytes_written_raw is None else bytes_written_raw
+        bytes_written = (
+            len(uart_bytes) if bytes_written_raw is None else bytes_written_raw
+        )
         if bytes_written != len(uart_bytes):
             raise IOError("serial port write was incomplete")
 
@@ -151,7 +152,9 @@ class TcCommandSender:
         return self._frame_sequence_number
 
     def _increment_counters(self) -> None:
-        self._packet_sequence_count = (self._packet_sequence_count + 1) & MAX_SEQUENCE_COUNT
+        self._packet_sequence_count = (
+            self._packet_sequence_count + 1
+        ) & MAX_SEQUENCE_COUNT
         self._frame_sequence_number = (
             self._frame_sequence_number + 1
         ) & MAX_FRAME_SEQUENCE_NUMBER

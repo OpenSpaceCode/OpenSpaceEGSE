@@ -13,7 +13,7 @@ def test_uart_stream_tm_roundtrip_with_chunked_input_and_escaping() -> None:
         virtual_channel_id=2,
         master_channel_frame_count=1,
         virtual_channel_frame_count=2,
-        payload=b"\xC0\xDB\x10\x20",
+        payload=b"\xc0\xdb\x10\x20",
         first_header_pointer=0,
     )
     encoded_stream = SdlpUartStreamSerializer.serialize_tm(tm)
@@ -46,14 +46,13 @@ def test_uart_stream_parses_multiple_frames_in_single_feed() -> None:
         spacecraft_id=2,
         virtual_channel_id=3,
         frame_sequence_number=99,
-        payload=b"\xAA\xBB\xCC",
+        payload=b"\xaa\xbb\xcc",
         fecf=b"\x00\x00",
     )
 
-    stream = (
-        SdlpUartStreamSerializer.serialize_tm(tm)
-        + SdlpUartStreamSerializer.serialize_tc(tc)
-    )
+    stream = SdlpUartStreamSerializer.serialize_tm(
+        tm
+    ) + SdlpUartStreamSerializer.serialize_tc(tc)
 
     parser = SdlpUartStreamParser()
     parsed = parser.feed(stream)
@@ -94,7 +93,7 @@ def test_uart_stream_tc_roundtrip_with_fecf() -> None:
         payload=b"\x10\x20\x30\x40",
         bypass_flag=True,
         control_command_flag=True,
-        fecf=b"\xCA\xFE",
+        fecf=b"\xca\xfe",
     )
 
     stream = SdlpUartStreamSerializer.serialize_tc(tc)

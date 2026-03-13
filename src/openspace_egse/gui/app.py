@@ -190,7 +190,10 @@ class EgseGuiApp:
         )
         style.map(
             "Primary.TButton",
-            background=[("active", COLOR_ACCENT_HOVER), ("pressed", COLOR_ACCENT_HOVER)],
+            background=[
+                ("active", COLOR_ACCENT_HOVER),
+                ("pressed", COLOR_ACCENT_HOVER),
+            ],
             foreground=[("disabled", COLOR_TEXT_MUTED)],
         )
 
@@ -204,7 +207,10 @@ class EgseGuiApp:
         )
         style.map(
             "Danger.TButton",
-            background=[("active", COLOR_DANGER_HOVER), ("pressed", COLOR_DANGER_HOVER)],
+            background=[
+                ("active", COLOR_DANGER_HOVER),
+                ("pressed", COLOR_DANGER_HOVER),
+            ],
             foreground=[("disabled", COLOR_TEXT_MUTED)],
         )
 
@@ -281,7 +287,9 @@ class EgseGuiApp:
             row=0, column=1, sticky=tk.W, padx=(6, 0)
         )
 
-        ttk.Label(conn_group, text="Baud").grid(row=1, column=0, sticky=tk.W, pady=(6, 0))
+        ttk.Label(conn_group, text="Baud").grid(
+            row=1, column=0, sticky=tk.W, pady=(6, 0)
+        )
         self.baud_var = tk.StringVar(value=str(EGSE_SERIAL_BAUDRATE_DEFAULT))
         ttk.Entry(conn_group, textvariable=self.baud_var, width=18).grid(
             row=1, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0)
@@ -300,17 +308,13 @@ class EgseGuiApp:
             text="Connect",
             command=self._connect,
             style="Primary.TButton",
-        ).pack(
-            side=tk.LEFT
-        )
+        ).pack(side=tk.LEFT)
         ttk.Button(
             button_row,
             text="Disconnect",
             command=self._disconnect,
             style="Danger.TButton",
-        ).pack(
-            side=tk.LEFT, padx=(8, 0)
-        )
+        ).pack(side=tk.LEFT, padx=(8, 0))
 
         tc_group = ttk.LabelFrame(
             self.control_frame,
@@ -332,19 +336,25 @@ class EgseGuiApp:
             row=1, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0)
         )
 
-        ttk.Label(tc_group, text="TC APID").grid(row=2, column=0, sticky=tk.W, pady=(6, 0))
+        ttk.Label(tc_group, text="TC APID").grid(
+            row=2, column=0, sticky=tk.W, pady=(6, 0)
+        )
         self.tc_apid_var = tk.StringVar(value=str(CCSDS_DEFAULT_TC_APID))
         ttk.Entry(tc_group, textvariable=self.tc_apid_var, width=10).grid(
             row=2, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0)
         )
 
-        ttk.Label(tc_group, text="TM APID").grid(row=3, column=0, sticky=tk.W, pady=(6, 0))
+        ttk.Label(tc_group, text="TM APID").grid(
+            row=3, column=0, sticky=tk.W, pady=(6, 0)
+        )
         self.tm_apid_var = tk.StringVar(value=str(CCSDS_DEFAULT_TM_APID))
         ttk.Entry(tc_group, textvariable=self.tm_apid_var, width=10).grid(
             row=3, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0)
         )
 
-        ttk.Label(tc_group, text="Command").grid(row=4, column=0, sticky=tk.W, pady=(8, 0))
+        ttk.Label(tc_group, text="Command").grid(
+            row=4, column=0, sticky=tk.W, pady=(8, 0)
+        )
         self.command_var = tk.StringVar(value=available_tc_commands()[0])
         self.command_box = ttk.Combobox(
             tc_group,
@@ -356,14 +366,18 @@ class EgseGuiApp:
         self.command_box.grid(row=4, column=1, sticky=tk.W, padx=(6, 0), pady=(8, 0))
         self.command_box.bind("<<ComboboxSelected>>", self._on_command_changed)
 
-        ttk.Label(tc_group, text="Parameter").grid(row=5, column=0, sticky=tk.W, pady=(6, 0))
+        ttk.Label(tc_group, text="Parameter").grid(
+            row=5, column=0, sticky=tk.W, pady=(6, 0)
+        )
         self.parameter_var = tk.StringVar(value="0")
         self.parameter_entry = ttk.Entry(
             tc_group,
             textvariable=self.parameter_var,
             width=20,
         )
-        self.parameter_entry.grid(row=5, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0))
+        self.parameter_entry.grid(
+            row=5, column=1, sticky=tk.W, padx=(6, 0), pady=(6, 0)
+        )
         self.parameter_hint_var = tk.StringVar(value="")
         ttk.Label(tc_group, textvariable=self.parameter_hint_var).grid(
             row=6,
@@ -513,9 +527,15 @@ class EgseGuiApp:
         self.ax_voltage = self.figure.add_subplot(312)
         self.ax_capacity = self.figure.add_subplot(313)
 
-        self.temp_line, = self.ax_temp.plot([], [], color=CHART_COLOR_TEMP, linewidth=2.0)
-        self.voltage_line, = self.ax_voltage.plot([], [], color=CHART_COLOR_VOLTAGE, linewidth=2.0)
-        self.capacity_line, = self.ax_capacity.plot([], [], color=CHART_COLOR_CAPACITY, linewidth=2.0)
+        (self.temp_line,) = self.ax_temp.plot(
+            [], [], color=CHART_COLOR_TEMP, linewidth=2.0
+        )
+        (self.voltage_line,) = self.ax_voltage.plot(
+            [], [], color=CHART_COLOR_VOLTAGE, linewidth=2.0
+        )
+        (self.capacity_line,) = self.ax_capacity.plot(
+            [], [], color=CHART_COLOR_CAPACITY, linewidth=2.0
+        )
 
         self.ax_temp.set_title("Temperature [°C]")
         self.ax_voltage.set_title("Voltage [V]")
@@ -585,7 +605,10 @@ class EgseGuiApp:
 
         if definition.requires_parameter:
             self.parameter_entry.configure(state=tk.NORMAL)
-            if definition.parameter_min is not None and definition.parameter_max is not None:
+            if (
+                definition.parameter_min is not None
+                and definition.parameter_max is not None
+            ):
                 self.parameter_hint_var.set(
                     f"Parameter range: {definition.parameter_min}..{definition.parameter_max}"
                 )
@@ -687,9 +710,7 @@ class EgseGuiApp:
 
         self._auto_sim_running = True
         self.auto_sim_button.configure(text=self._auto_sim_button_text())
-        self._log(
-            f"Auto simulation started ({self._current_sim_frequency_hz():g} Hz)"
-        )
+        self._log(f"Auto simulation started ({self._current_sim_frequency_hz():g} Hz)")
         self._run_auto_simulation_step()
 
     def _run_auto_simulation_step(self) -> None:
@@ -710,9 +731,9 @@ class EgseGuiApp:
             self._auto_sim_after_id = None
 
     def _toggle_sim_frequency(self) -> None:
-        self._sim_frequency_index = (
-            self._sim_frequency_index + 1
-        ) % len(GUI_SIM_FREQUENCY_OPTIONS_HZ)
+        self._sim_frequency_index = (self._sim_frequency_index + 1) % len(
+            GUI_SIM_FREQUENCY_OPTIONS_HZ
+        )
         self.sim_frequency_button.configure(text=self._sim_frequency_button_text())
         self.auto_sim_button.configure(text=self._auto_sim_button_text())
         self._log(
@@ -787,9 +808,13 @@ class EgseGuiApp:
 
     def _handle_decoded_packet(self, decoded_packet) -> None:
         packet = decoded_packet.space_packet
-        self._log(f"[DEBUG] Packet received: type={getattr(packet, 'packet_type', None)}, apid={getattr(packet, 'apid', None)}, sequence_flags={getattr(packet, 'sequence_flags', None)}, sequence_count={getattr(packet, 'sequence_count', None)}, raw={getattr(packet, 'data_field', b'').hex()}")
+        self._log(
+            f"[DEBUG] Packet received: type={getattr(packet, 'packet_type', None)}, apid={getattr(packet, 'apid', None)}, sequence_flags={getattr(packet, 'sequence_flags', None)}, sequence_count={getattr(packet, 'sequence_count', None)}, raw={getattr(packet, 'data_field', b'').hex()}"
+        )
         if packet.packet_type != PacketType.TELEMETRY:
-            self._log(f"[DEBUG] Ignored packet: not TELEMETRY (type={packet.packet_type})")
+            self._log(
+                f"[DEBUG] Ignored packet: not TELEMETRY (type={packet.packet_type})"
+            )
             return
 
         try:
@@ -798,13 +823,17 @@ class EgseGuiApp:
             telemetry_apid = CCSDS_DEFAULT_TM_APID
 
         if packet.apid != telemetry_apid:
-            self._log(f"[DEBUG] Ignored packet: APID mismatch (packet.apid={packet.apid}, expected={telemetry_apid})")
+            self._log(
+                f"[DEBUG] Ignored packet: APID mismatch (packet.apid={packet.apid}, expected={telemetry_apid})"
+            )
             return
 
         try:
             sample = decode_telemetry_payload(packet.data_field)
         except (TypeError, ValueError) as exc:
-            self._log(f"Ignored telemetry packet with unsupported payload format: {exc}")
+            self._log(
+                f"Ignored telemetry packet with unsupported payload format: {exc}"
+            )
             return
 
         self._sample_index += 1
@@ -883,9 +912,7 @@ class EgseGuiApp:
         if not path_text:
             self._set_log_file_path(GUI_EVENT_LOG_FILE_DEFAULT)
 
-        self._log(
-            f"File logging enabled: {self.log_file_path_display_var.get()}"
-        )
+        self._log(f"File logging enabled: {self.log_file_path_display_var.get()}")
 
     def _choose_log_file(self) -> None:
         if filedialog is None:
@@ -899,7 +926,11 @@ class EgseGuiApp:
             initialdir=str(current_path.parent),
             initialfile=current_path.name,
             defaultextension=".log",
-            filetypes=[("Log files", "*.log"), ("Text files", "*.txt"), ("All files", "*.*")],
+            filetypes=[
+                ("Log files", "*.log"),
+                ("Text files", "*.txt"),
+                ("All files", "*.*"),
+            ],
         )
         if not selected:
             return
@@ -910,9 +941,7 @@ class EgseGuiApp:
     def _set_log_file_path(self, path_text: str) -> None:
         resolved = str(Path(path_text).expanduser())
         self.log_file_path_var.set(resolved)
-        self.log_file_path_display_var.set(
-            self._format_log_path_for_display(resolved)
-        )
+        self.log_file_path_display_var.set(self._format_log_path_for_display(resolved))
 
     def _format_log_path_for_display(self, path_text: str) -> str:
         path = Path(path_text).expanduser()

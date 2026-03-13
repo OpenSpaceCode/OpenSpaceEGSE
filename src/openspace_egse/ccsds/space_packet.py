@@ -38,17 +38,13 @@ class SpacePacket:
         if not 0 <= self.apid <= MAX_APID:
             raise ValueError(f"apid must be in range 0..{MAX_APID}")
         if not 0 <= self.sequence_count <= MAX_SEQUENCE_COUNT:
-            raise ValueError(
-                f"sequence_count must be in range 0..{MAX_SEQUENCE_COUNT}"
-            )
+            raise ValueError(f"sequence_count must be in range 0..{MAX_SEQUENCE_COUNT}")
         if not isinstance(self.data_field, (bytes, bytearray)):
             raise TypeError("data_field must be bytes-like")
         if len(self.data_field) == 0:
             raise ValueError("data_field must not be empty")
         if len(self.data_field) - 1 > MAX_DATA_LENGTH_FIELD:
-            raise ValueError(
-                "data_field is too large for CCSDS packet length field"
-            )
+            raise ValueError("data_field is too large for CCSDS packet length field")
 
     @property
     def data_length(self) -> int:
@@ -65,9 +61,8 @@ class SpacePacket:
             | ((1 if self.secondary_header_flag else 0) << 11)
             | (self.apid & MAX_APID)
         )
-        second_word = (
-            ((int(self.sequence_flags) & 0x03) << 14)
-            | (self.sequence_count & MAX_SEQUENCE_COUNT)
+        second_word = ((int(self.sequence_flags) & 0x03) << 14) | (
+            self.sequence_count & MAX_SEQUENCE_COUNT
         )
         header = (
             first_word.to_bytes(2, byteorder="big")

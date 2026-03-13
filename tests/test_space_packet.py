@@ -40,7 +40,7 @@ def test_encode_decode_roundtrip_tc_packet() -> None:
 
 
 def test_decode_raises_on_mismatched_length() -> None:
-    packet = SpacePacket.build_tm(apid=5, sequence_count=9, payload=b"\xAA\xBB")
+    packet = SpacePacket.build_tm(apid=5, sequence_count=9, payload=b"\xaa\xbb")
     raw = packet.encode()
     invalid = raw[:-1]
 

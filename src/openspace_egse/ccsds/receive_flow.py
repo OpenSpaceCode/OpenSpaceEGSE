@@ -3,6 +3,7 @@ from __future__ import annotations
 # Import for event logging
 try:
     from openspace_egse.gui.app import EgseGuiApp
+
     _event_logger = None
 except ImportError:
     EgseGuiApp = None
@@ -25,11 +26,9 @@ SPACE_PACKET_DATA_LENGTH_FIELD_END = 6
 
 class SerialLike(Protocol):
     @property
-    def in_waiting(self) -> int:
-        ...
+    def in_waiting(self) -> int: ...
 
-    def read(self, size: int = 1) -> bytes:
-        ...
+    def read(self, size: int = 1) -> bytes: ...
 
 
 @dataclass(slots=True, frozen=True)
@@ -44,7 +43,9 @@ class SdlpSpacePacketReceiver:
 
     def process_uart_bytes(self, uart_chunk: bytes) -> list[DecodedSpacePacket]:
         if EgseGuiApp:
-            EgseGuiApp._log(EgseGuiApp, f"[DEBUG] UART chunk received: {uart_chunk.hex()}")
+            EgseGuiApp._log(
+                EgseGuiApp, f"[DEBUG] UART chunk received: {uart_chunk.hex()}"
+            )
         parsed_frames = self._uart_parser.feed(uart_chunk)
         if EgseGuiApp:
             EgseGuiApp._log(EgseGuiApp, f"[DEBUG] Parsed frames: {len(parsed_frames)}")
@@ -146,7 +147,9 @@ def _decode_space_packets_from_payload(
             ],
             "big",
         )
-        packet_total_length = SPACE_PACKET_PRIMARY_HEADER_LENGTH + packet_data_length + 1
+        packet_total_length = (
+            SPACE_PACKET_PRIMARY_HEADER_LENGTH + packet_data_length + 1
+        )
         packet_end = offset + packet_total_length
         if packet_end > len(payload):
             break
