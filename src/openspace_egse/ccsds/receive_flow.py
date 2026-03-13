@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+# Import for event logging
+try:
+    from openspace_egse.gui.app import EgseGuiApp
+    _event_logger = None
+except ImportError:
+    EgseGuiApp = None
+    _event_logger = None
+
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -35,10 +43,23 @@ class SdlpSpacePacketReceiver:
         self._uart_parser = SdlpUartStreamParser()
 
     def process_uart_bytes(self, uart_chunk: bytes) -> list[DecodedSpacePacket]:
+        if EgseGuiApp:
+            EgseGuiApp._log(EgseGuiApp, f"[DEBUG] UART chunk received: {uart_chunk.hex()}")
         parsed_frames = self._uart_parser.feed(uart_chunk)
+        if EgseGuiApp:
+            EgseGuiApp._log(EgseGuiApp, f"[DEBUG] Parsed frames: {len(parsed_frames)}")
         decoded_packets: list[DecodedSpacePacket] = []
         for parsed_frame in parsed_frames:
-            decoded_packets.extend(self._decode_packets_from_sdlp_frame(parsed_frame))
+            try:
+                decoded = self._decode_packets_from_sdlp_frame(parsed_frame)
+                decoded_packets.extend(decoded)
+                # Log each received frame
+                if _event_logger:
+                    _event_logger._log("RX: Frame received")
+            except Exception as exc:
+                # Log parsing error
+                if _event_logger:
+                    _event_logger._log(f"RX: Frame received - Parsing Error! {exc}")
         return decoded_packets
 
     def process_serial_once(

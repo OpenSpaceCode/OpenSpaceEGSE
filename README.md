@@ -57,6 +57,35 @@ python -m pip install -e .[dev,gui]
 openspace-egse-gui
 ```
 
+### Running on WSL in Windows
+Running app on WSL in Windows may cause problems with USB com connection in the App. Here is the step by step instruction to handle it.
+1. Make sure you have usbipd installed in your system
+```bash
+winget install usbipd
+```
+2. Check list of USB devices and search for your device
+```bash
+usbipd list
+```
+3. Bind the device (i.e. 1-2)
+```bash
+usbipd bind --busid 1-2
+```
+4. Attach the device to WSL (i.e. 1-2)
+```bash
+usbipd attach --wsl --busid 1-2
+```
+
+You can the check if the device is visible in WSL using commands:
+```bash
+lsusb
+```
+or
+```bash
+ls /dev/tty*
+```
+It may show up as /dev/ttyACM*.
+
 ### Run tests
 
 ```bash
@@ -174,12 +203,12 @@ Main API:
 
 Built-in commands:
 
-| Command | Payload format |
-|---|---|
-| `ping` | `0x01 + uint16(parameter)` |
-| `set_mode` | `0x02 + uint8(parameter)` |
-| `reset_subsystem` | `0x03 + uint8(parameter)` |
-| `request_status` | `0x04` |
+| Command           | Payload format             |
+| ----------------- | -------------------------- |
+| `ping`            | `0x01 + uint16(parameter)` |
+| `set_mode`        | `0x02 + uint8(parameter)`  |
+| `reset_subsystem` | `0x03 + uint8(parameter)`  |
+| `request_status`  | `0x04`                     |
 
 Sequence counters are incremented automatically after successful write.
 
@@ -225,12 +254,12 @@ Implemented in `src/openspace_egse/ccsds/telemetry.py`.
 
 Current expected TM payload layout (`>= 7 bytes`):
 
-| Offset | Size | Meaning | Conversion |
-|---|---:|---|---|
-| 0 | 1 | status code | mapped to text (`BOOT/IDLE/NOMINAL/SAFE/FAULT`) |
-| 1..2 | 2 | temperature | signed int16 / 100 -> °C |
-| 3..4 | 2 | voltage | uint16 / 1000 -> V |
-| 5..6 | 2 | battery capacity | uint16 / 10 -> % |
+| Offset | Size | Meaning          | Conversion                                      |
+| ------ | ---: | ---------------- | ----------------------------------------------- |
+| 0      |    1 | status code      | mapped to text (`BOOT/IDLE/NOMINAL/SAFE/FAULT`) |
+| 1..2   |    2 | temperature      | signed int16 / 100 -> °C                        |
+| 3..4   |    2 | voltage          | uint16 / 1000 -> V                              |
+| 5..6   |    2 | battery capacity | uint16 / 10 -> %                                |
 
 ---
 

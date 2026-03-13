@@ -755,13 +755,17 @@ class EgseGuiApp:
                 continue
 
             try:
+                # pending = int(getattr(serial_port, 'in_waiting', 0))
+                # self._log(f"[DEBUG] Serial in_waiting: {pending}")
                 decoded_packets = self._receiver.process_serial_once(
                     serial_port,
                     max_read_size=EGSE_SERIAL_MAX_READ_SIZE,
                 )
+                # self._log(f"[DEBUG] Decoded packets: {len(decoded_packets)}")
                 for decoded in decoded_packets:
                     self._rx_queue.put(decoded)
-            except (OSError, SerialException):
+            except (OSError, SerialException) as exc:
+                self._log(f"[DEBUG] RX error: {exc}")
                 self._rx_queue.put(None)
                 time.sleep(GUI_RX_POLL_INTERVAL_S)
 
@@ -783,7 +787,9 @@ class EgseGuiApp:
 
     def _handle_decoded_packet(self, decoded_packet) -> None:
         packet = decoded_packet.space_packet
+        self._log(f"[DEBUG] Packet received: type={getattr(packet, 'packet_type', None)}, apid={getattr(packet, 'apid', None)}, sequence_flags={getattr(packet, 'sequence_flags', None)}, sequence_count={getattr(packet, 'sequence_count', None)}, raw={getattr(packet, 'data_field', b'').hex()}")
         if packet.packet_type != PacketType.TELEMETRY:
+            self._log(f"[DEBUG] Ignored packet: not TELEMETRY (type={packet.packet_type})")
             return
 
         try:
@@ -792,12 +798,13 @@ class EgseGuiApp:
             telemetry_apid = CCSDS_DEFAULT_TM_APID
 
         if packet.apid != telemetry_apid:
+            self._log(f"[DEBUG] Ignored packet: APID mismatch (packet.apid={packet.apid}, expected={telemetry_apid})")
             return
 
         try:
             sample = decode_telemetry_payload(packet.data_field)
-        except (TypeError, ValueError):
-            self._log("Ignored telemetry packet with unsupported payload format")
+        except (TypeError, ValueError) as exc:
+            self._log(f"Ignored telemetry packet with unsupported payload format: {exc}")
             return
 
         self._sample_index += 1
